@@ -27,10 +27,10 @@ class SEResNext50_32x4d(nn.Module):
         return out, loss
 
 def train(fold):
-    training_data_path = ""
+    training_data_path = "/content/train_images/"
     df = pd.read_csv("train_folds.csv")
-    model_path = "/home/ravi/kaggle_sm/checkpoints"
-    device = "cpu"
+    model_path = "/content/checkpoints/"
+    device = "cuda"
     epochs = 10
     train_bs = 32
     val_bs = 16

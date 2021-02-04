@@ -2,6 +2,7 @@ from kaggle.api.kaggle_api_extended import KaggleApi
 import pandas as pd
 import numpy as np
 import os
+import zipfile
 
 api = KaggleApi()
 api.authenticate()
@@ -9,6 +10,8 @@ api.authenticate()
 train_master_csv_file_name = 'train_master.csv'
 train_csv_file_name = 'train.csv'
 test_csv_file_name = 'test.csv'
+
+train_images_path = "/content/train_images/"
 
 if not os.path.isfile(train_master_csv_file_name):
     api.competition_download_file('siim-isic-melanoma-classification',
@@ -26,4 +29,15 @@ print(train_df_master.target.value_counts())
 train_df = train_df_master[train_df_master.target == 0][:500]
 train_df = train_df.append(train_df_master[train_df_master.target == 1][:500], ignore_index = True)
 
-train_df.to_csv('train.csv', index = False)
+if not os.path.exists('train.csv'):
+    train_df.to_csv('train.csv', index = False)
+
+for ind, file in enumerate(train_df.image_name.values):
+    print(ind, file)
+    if not os.path.exists(train_images_path + file + ".jpg"):
+        api.competition_download_file('siim-isic-melanoma-classification', "jpeg/train/" + file + ".jpg", train_images_path)
+    zip_file_name = train_images_path + file + ".jpg.zip"
+    if os.path.exists(zip_file_name):
+        with zipfile.ZipFile(zip_file_name, 'r') as zip_ref:
+            zip_ref.extractall(train_images_path)
+            os.remove(zip_file_name)
