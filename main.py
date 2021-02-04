@@ -6,7 +6,7 @@ import pandas as pd
 import pretrainedmodels
 import albumentations
 from torch.nn import functional as F
-from wtfml.data_loaders.image import ClassificationDataLoader
+from wtfml.data_loaders.image import ClassificationLoader
 from wtfml.utils import EarlyStopping
 from wtfml.engine import Engine
 from sklearn import metrics
@@ -30,7 +30,7 @@ def train(fold):
     training_data_path = "/content/train_images/"
     df = pd.read_csv("train_folds.csv")
     model_path = "/content/checkpoints/"
-    device = "cuda"
+    device = "cpu"
     epochs = 10
     train_bs = 32
     val_bs = 16
@@ -61,7 +61,7 @@ def train(fold):
     val_images = [os.path.join(training_data_path, i + ".jpg") for i in val_images]
     val_targets = df_train.target.values
 
-    train_dataset = ClassificationDataLoader(
+    train_dataset = ClassificationLoader(
         image_paths= train_images,
         targets = train_targets,
         resize=None,
@@ -70,11 +70,11 @@ def train(fold):
     train_loder = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=train_bs,
-        shuffle=True,
+        shuffle=False,
         num_workers=4
     )
 
-    val_dataset = ClassificationDataLoader(
+    val_dataset = ClassificationLoader(
         image_paths= val_images,
         targets = val_targets,
         resize=None,
@@ -89,17 +89,16 @@ def train(fold):
 
     model = SEResNext50_32x4d(pretrained='imagenet')
     model.to(device)
-    optimizer = torch.optims.Adam(model.parameters(), lr= 1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr= 1e-4)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer,
         patience=3,
         mode="max"
     )
-    engine = Engine(model, optimizer, device)
     es = EarlyStopping(patience=5, mode= "max")
     predictions = []
     for epoch in range(epochs):
-        training_loss = engine.train(train_loder)
+        training_loss = Engine.train(train_loder, model, optimizer, device=device)
         val_loss = engine.evaluate(val_loder)
         predictions = np.vstack((engine.predict(val_loder))).ravel()
         auc = metrics.roc_auc_score(val_targets, predictions)
